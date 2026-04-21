@@ -495,9 +495,9 @@ async function init() {
             });
             products = Array.from(itemMap.values());
             
-            // --- 这里的修改是关键 ---
-            // 如果 maxDateVal 存在则显示它，否则显示今天的日期
-            const displayDate = maxDateVal || new Date().toLocaleDateString();
+            // --- 这里的修改：显示当天日期 ---
+            const today = new Date();
+            const displayDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
             document.getElementById('lastUpdateDisplay').textContent = `数据更新至: ${displayDate}`;
             
             updateL1();
@@ -640,48 +640,3 @@ const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.tri
     }
 
     function renderPagination(total) {
-        const totalPages = Math.ceil(total / pageSize);
-        const pag = document.getElementById('pagination');
-        if (totalPages <= 1) { pag.innerHTML = ''; return; }
-        let html = `<button onclick="render(filteredData, ${Math.max(1, currentPage - 1)})">Prev</button>`;
-        html += `<span style="font-size:13px; font-weight:600; color:var(--text);">${currentPage} / ${totalPages}</span>`;
-        html += `<button onclick="render(filteredData, ${Math.min(totalPages, currentPage + 1)})">Next</button>`;
-        pag.innerHTML = html;
-    }
-
-    function copyText(txt) {
-        navigator.clipboard.writeText(txt).then(() => showToast("ID已复制"));
-    }
-
-    function openModal(src) {
-        document.getElementById('modalImg').src = src;
-        document.getElementById('imageModal').style.display = 'flex';
-    }
-
-    let timer;
-    function debouncedFilter() {
-        clearTimeout(timer);
-        timer = setTimeout(applyFilters, 300);
-    }
-
-    function clearFilters() {
-        document.getElementById('searchInput').value = '';
-        document.getElementById('l1Filter').value = '';
-        document.getElementById('l2Filter').value = '';
-        document.getElementById('l3Filter').value = '';
-        document.getElementById('minPrice').value = '';
-        document.getElementById('maxPrice').value = '';
-        document.getElementById('siteFilter').value = '';
-        document.getElementById('sellerTypeFilter').value = '';
-        document.getElementById('officialShopFilter').value = '';
-        document.getElementById('isNewSkuFilter').value = '';
-        document.getElementById('sortOrder').value = 'dateDesc';
-        updateL2(); 
-        applyFilters();
-    }
-
-    init();
-</script>
-
-</body>
-</html>
