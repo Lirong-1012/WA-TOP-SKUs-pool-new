@@ -416,7 +416,7 @@
         shop_name: clean(row[11]),
         team: clean(row[12]),
         ggp_name: clean(row[13]),
-        seller_type: clean(row[14]).toUpperCase(), // 修正：卖家类型标准化
+        seller_type: clean(row[14]), // 修正：卖家类型标准化
         is_official_shop: clean(row[15]).toUpperCase(),
         is_new_sku: clean(row[16]).toUpperCase(),
         daily_sales: toNum(row[17]),
