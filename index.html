@@ -568,10 +568,8 @@ async function init() {
             const matchPrice = (i.price_rmb >= minP && i.price_rmb <= maxP);
             const matchSite = !site || i.site === site;
             
-            // 修正：卖家类型逻辑，支持 CNCB (对应 CB) 和 Local
-            let sType = i.seller_type;
-            if (sType === 'CB') sType = 'CNCB';
-            const matchSeller = !seller || sType === seller;
+            // ✅ 修复后：移除 CB 转换，直接执行去空格和不区分大小写的匹配
+const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.trim().toUpperCase();
             
             const matchOfficial = !official || i.is_official_shop === official;
             const matchNew = !newSku || i.is_new_sku === newSku;
