@@ -243,6 +243,8 @@
 
         .extra-info { font-size: 11px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--border); }
         .extra-item { display: flex; gap: 4px; }
+        /* 新增样式：让 GGP Name 独占一行 */
+        .ggp-row { grid-column: 1 / -1; display: flex; gap: 4px; padding-bottom: 4px; border-bottom: 1px dotted var(--border); margin-bottom: 2px; }
         .extra-label { font-weight: 600; color: #666; white-space: nowrap; }
 
         .footer-row {
@@ -617,9 +619,9 @@ const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.tri
                             <div class="stat-box"><div class="stat-label">ADGMV</div><div class="stat-value revenue-val">¥${Math.round(i.daily_revenue)}</div></div>
                         </div>
                         <div class="extra-info">
+                            <div class="ggp-row"><span class="extra-label">GGP Name:</span>${i.ggp_name}</div>
                             <div class="extra-item"><span class="extra-label">team:</span>${i.team}</div>
                             <div class="extra-item"><span class="extra-label">店铺名:</span>${i.shop_name}</div>
-                            <div class="extra-item"><span class="extra-label">GGP:</span>${i.ggp_name}</div>
                             <div class="extra-item"><span class="extra-label">卖家类型:</span>${i.seller_type === 'CB' ? 'CNCB' : i.seller_type}</div>
                             <div class="extra-item"><span class="extra-label">官方:</span>${i.is_official_shop === 'Y' ? '是' : '否'}</div>
                             <div class="extra-item"><span class="extra-label">创建时间:</span>${i.update_date}</div>
