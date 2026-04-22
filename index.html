@@ -297,7 +297,7 @@
         <h1>👗 Shopee Fashion 女装选品清单 <span class="badge">Internal Only</span></h1>
         <div class="header-desc">
             ✨ <strong>精选热销品与潜力新品</strong> · 涵盖多站点，帮你快速锁定爆款选品<br>
-            📊 ADO、ADGMV及产品售价均为真实数据（未脱敏），<strong>ADGMV统一为人民币 (¥)</strong><br>
+            📊 ADO、ADGMV及产品售价均为真实数据（未脱敏），<strong>ADGMV统一为美元 ($)</strong><br>
             🔒 提示：当前页面仅供内部选品使用。
         </div>
         <div class="last-update-tag" id="lastUpdateDisplay">数据加载中...</div>
@@ -320,7 +320,7 @@
                 <option value="">L3 类目</option>
             </select>
 
-            <span class="filter-label">价格 (¥)</span>
+            <span class="filter-label">价格 ($)</span>
             <input type="number" id="minPrice" placeholder="Min" oninput="debouncedFilter()" style="width:70px;">
             <input type="number" id="maxPrice" placeholder="Max" oninput="debouncedFilter()" style="width:70px;">
             
@@ -405,7 +405,7 @@
     // 标准化数据映射层
     const mapData = (row) => ({
         title: clean(row[0]),
-        price_rmb: toNum(row[1]),
+        price_usd: toNum(row[1]),
         price_local: clean(row[2]),
         imgUrl: clean(row[3]),
         link: clean(row[4]),
@@ -562,7 +562,7 @@ async function init() {
             const matchL1 = !l1 || i.l1 === l1;
             const matchL2 = !l2 || i.l2 === l2;
             const matchL3 = !l3 || i.l3 === l3;
-            const matchPrice = (i.price_rmb >= minP && i.price_rmb <= maxP);
+            const matchPrice = (i.price_usd >= minP && i.price_usd <= maxP);
             const matchSite = !site || i.site === site;
             
             // ✅ 修复后：移除 CB 转换，直接执行去空格和不区分大小写的匹配
@@ -576,7 +576,7 @@ const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.tri
 
         const sort = document.getElementById('sortOrder').value;
         if (sort === 'dateDesc') filteredData.sort((a,b) => new Date(mapData(b).update_date) - new Date(mapData(a).update_date));
-        else if (sort === 'priceDesc') filteredData.sort((a,b) => mapData(b).price_rmb - mapData(a).price_rmb);
+        else if (sort === 'priceDesc') filteredData.sort((a,b) => mapData(b).price_usd - mapData(a).price_usd);
         else if (sort === 'salesDesc') filteredData.sort((a,b) => mapData(b).daily_sales - mapData(a).daily_sales);
         else if (sort === 'revDesc') filteredData.sort((a,b) => mapData(b).daily_revenue - mapData(a).daily_revenue);
 
@@ -608,7 +608,7 @@ const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.tri
                     <div class="info">
                         <div class="item-title" title="${i.title}">${i.title}</div>
                         <div class="price-row">
-                            <span class="price-label">¥</span><span class="price-value">${i.price_rmb}</span>
+                            <span class="price-label">$</span><span class="price-value">${i.price_usd}</span>
                             <span class="price-local">(${i.price_local})</span>
                         </div>
                         <div class="meta-row">
@@ -616,7 +616,7 @@ const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.tri
                         </div>
                         <div class="stats-row">
                             <div class="stat-box"><div class="stat-label">ADO</div><div class="stat-value sales-val">${i.daily_sales}</div></div>
-                            <div class="stat-box"><div class="stat-label">ADGMV</div><div class="stat-value revenue-val">¥${Math.round(i.daily_revenue)}</div></div>
+                            <div class="stat-box"><div class="stat-label">ADGMV</div><div class="stat-value revenue-val">$${Math.round(i.daily_revenue)}</div></div>
                         </div>
                         <div class="extra-info">
                             <div class="ggp-row"><span class="extra-label">GGP Name:</span>${i.ggp_name}</div>
