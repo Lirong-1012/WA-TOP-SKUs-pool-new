@@ -620,6 +620,7 @@ const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.tri
                             <div class="extra-item"><span class="extra-label">team:</span>${i.team}</div>
                             <div class="extra-item"><span class="extra-label">店铺名:</span>${i.shop_name}</div>
                             <div class="extra-item"><span class="extra-label">卖家类型:</span>${i.seller_type === 'CB' ? 'CNCB' : i.seller_type}</div>
+                            <div class="extra-item"><span class="extra-label">GGP Name:</span>${i.ggp_name || '-'}</div>
                             <div class="extra-item"><span class="extra-label">官方:</span>${i.is_official_shop === 'Y' ? '是' : '否'}</div>
                             <div class="extra-item"><span class="extra-label">创建时间:</span>${i.update_date}</div>
                         </div>
