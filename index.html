@@ -227,15 +227,9 @@
         .price-value { color: var(--primary); font-size: 18px; font-weight: 700; }
         .price-local { color: var(--text-muted); font-size: 13px; font-weight: 400; }
 
-        .meta-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .meta-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
         .pill { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; border: 1px solid transparent; }
         .pill-cat { background: var(--tag-bg); color: var(--primary-dark); border-color: #f5c5d2; }
-
-        .mom-container { display: flex; flex-direction: column; gap: 2px; }
-        .mom-val { font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 2px; }
-        .mom-up { color: var(--success); }
-        .mom-down { color: var(--danger); }
-        .mom-none { color: var(--text-muted); }
 
         .stats-row { display: flex; gap: 8px; }
         .stat-box {
@@ -249,6 +243,7 @@
 
         .extra-info { font-size: 11px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--border); }
         .extra-item { display: flex; gap: 4px; }
+        /* 新增样式：让 GGP Name 独占一行 */
         .ggp-row { grid-column: 1 / -1; display: flex; gap: 4px; padding-bottom: 4px; border-bottom: 1px dotted var(--border); margin-bottom: 2px; }
         .extra-label { font-weight: 600; color: #666; white-space: nowrap; }
 
@@ -318,7 +313,7 @@
             <select id="l1Filter" onchange="updateL2(); applyFilters()">
                 <option value="">L1 类目</option>
             </select>
-            <select id="l2Filter" onchange="updateL2(); applyFilters()">
+            <select id="l2Filter" onchange="updateL3(); applyFilters()">
                 <option value="">L2 类目</option>
             </select>
             <select id="l3Filter" onchange="applyFilters()">
@@ -388,8 +383,8 @@
 
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvjtVCX-0LPWEHXrZKoAqs0vOslq7uIe51pGmHdfKkYVkaKxU1uzBpDRtndxN13ZqpjeefXg8Ns4Rd/pub?output=csv';
-    const CACHE_KEY = 'shopee_fashion_data_v5';
-    const CACHE_TIME = 1000 * 60 * 30;
+    const CACHE_KEY = 'shopee_fashion_data_v4';
+    const CACHE_TIME = 1000 * 60 * 30; // 30 mins
     let products = [], filteredData = [], currentPage = 1;
     const pageSize = 40;
     const siteFlag = { BR:'🇧🇷', MX:'🇲🇽', MY:'🇲🇾', PH:'🇵🇭', SG:'🇸🇬', TH:'🇹🇭', TW:'🇹🇼', VN:'🇻🇳', ID:'🇮🇩' };
@@ -401,17 +396,16 @@
         setTimeout(() => t.classList.remove('show'), 2000);
     }
 
-    const clean = (s) => (s === undefined || s === null) ? "" : s.toString().replace(/^[="]+|["]+$/g, '').trim();
-    
-    const toNumRaw = (s) => {
+    const clean = (s) => (s || "").toString().replace(/^[="]+|["]+$/g, '').trim();
+    const toNum = (s) => {
         const val = clean(s).replace(/,/g, '');
-        if (val === "" || isNaN(val)) return null;
-        return parseFloat(val);
+        return parseFloat(val) || 0;
     };
 
+    // 标准化数据映射层
     const mapData = (row) => ({
         title: clean(row[0]),
-        price_usd: toNumRaw(row[1]) || 0,
+        price_usd: toNum(row[1]),
         price_local: clean(row[2]),
         imgUrl: clean(row[3]),
         link: clean(row[4]),
@@ -420,71 +414,108 @@
         l3: clean(row[7]),
         update_date: clean(row[8]),
         itemid: clean(row[9]),
-        site: clean(row[10]).toUpperCase(),
+        site: clean(row[10]).toUpperCase(), // 修正：站点强制转大写清洗
         shop_name: clean(row[11]),
         team: clean(row[12]),
         ggp_name: clean(row[13]),
-        seller_type: clean(row[14]),
+        seller_type: clean(row[14]), // 修正：卖家类型标准化
         is_official_shop: clean(row[15]).toUpperCase(),
         is_new_sku: clean(row[16]).toUpperCase(),
-        daily_sales: toNumRaw(row[17]) || 0,
-        daily_revenue: toNumRaw(row[18]) || 0,
-        MOM: toNumRaw(row[19]), // 映射 T 列
-        mom_growth: toNumRaw(row[20]) // 映射 U 列
+        daily_sales: toNum(row[17]),
+        daily_revenue: toNum(row[18])
     });
 
-    async function init() {
-        const cache = localStorage.getItem(CACHE_KEY);
-        const cacheTime = localStorage.getItem(CACHE_KEY + '_time');
+    // --- 这是新代码：加入了详细错误捕获 ---
+async function init() {
+    // 检查是否有旧版本缓存并尝试清理，释放空间
+    const KEYS_TO_CLEAR = ['shopee_fashion_data_v1', 'shopee_fashion_data_v2', 'shopee_fashion_data_v3'];
+    KEYS_TO_CLEAR.forEach(k => localStorage.removeItem(k));
 
-        if (cache && cacheTime && (Date.now() - cacheTime < CACHE_TIME)) {
-            try {
-                products = JSON.parse(cache);
-                processData();
-                return;
-            } catch (e) { localStorage.removeItem(CACHE_KEY); }
-        }
+    const cache = localStorage.getItem(CACHE_KEY);
+    const cacheTime = localStorage.getItem(CACHE_KEY + '_time');
 
+    if (cache && cacheTime && (Date.now() - cacheTime < CACHE_TIME)) {
         try {
-            const res = await fetch(SHEET_URL);
-            const text = await res.text();
-            const rawRows = text.split(/\r?\n/).filter(line => line.trim().length > 0);
-            const rows = rawRows.slice(1).map(line => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-            
-            if (rows.length > 0) {
-                products = rows;
+            products = JSON.parse(cache);
+            processData();
+            return; // 成功加载缓存则退出
+        } catch (e) {
+            localStorage.removeItem(CACHE_KEY); // 缓存损坏则清理
+        }
+    }
+
+    try {
+        console.log("正在从服务器获取最新数据...");
+        const res = await fetch(SHEET_URL);
+        if (!res.ok) throw new Error("网络请求失败: " + res.status);
+        
+        const text = await res.text();
+        if (!text || text.length < 100) throw new Error("获取到的数据为空");
+
+        const rawRows = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+        // 跳过表头解析数据
+        const rows = rawRows.slice(1).map(line => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
+        
+        if (rows.length > 0) {
+            products = rows;
+            // 尝试存入缓存
+            try {
                 localStorage.setItem(CACHE_KEY, JSON.stringify(products));
                 localStorage.setItem(CACHE_KEY + '_time', Date.now().toString());
-                processData();
+            } catch (quotaError) {
+                console.warn("存储空间依然不足，本次将不使用缓存加载");
+                // 如果依然存不下，就清理掉所有存储尝试直接运行
+                localStorage.clear(); 
             }
-        } catch (e) { showToast("加载失败: " + e.message); }
-    }
-
-    function processData() {
-        if (products.length > 0) {
-            const itemMap = new Map();
-            products.forEach(row => {
-                const item = mapData(row);
-                if (!item.itemid) return;
-                if (!itemMap.has(item.itemid) || new Date(item.update_date) > new Date(mapData(itemMap.get(item.itemid)).update_date)) {
-                    itemMap.set(item.itemid, row);
-                }
-            });
-            products = Array.from(itemMap.values());
-            const now = new Date();
-            document.getElementById('lastUpdateDisplay').textContent = `数据更新至: ${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            updateL1();
-            applyFilters();
+            processData();
+        } else {
+            throw new Error("CSV 解析后无有效行");
         }
+    } catch (e) {
+        console.error("同步详细错误:", e);
+        showToast("加载失败: " + e.message);
     }
+}
+   function processData() {
+    if (products.length > 0) {
+        const itemMap = new Map();
+        // --- 删掉原有的 let maxDateVal = ""; 以及后续循环中的日期比较逻辑 ---
 
+        products.forEach(row => {
+            const item = mapData(row);
+            if (!item.itemid) return;
+            
+            // 仅保留去重逻辑
+            if (!itemMap.has(item.itemid) || new Date(item.update_date) > new Date(mapData(itemMap.get(item.itemid)).update_date)) {
+                itemMap.set(item.itemid, row);
+            }
+        });
+        products = Array.from(itemMap.values());
+        
+        // --- 修改此处：不再使用 maxDateVal，直接获取当天日期 ---
+        const now = new Date();
+        const displayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        
+        document.getElementById('lastUpdateDisplay').textContent = `数据更新至: ${displayDate}`;
+        
+        updateL1();
+        applyFilters();
+    }
+}
     function updateL1() {
+        // 修正：确保从全量数据中提取 L1（包括 Muslim Fashion）
         const l1Set = new Set();
-        products.forEach(r => { const val = mapData(r).l1; if (val) l1Set.add(val); });
+        products.forEach(r => {
+            const val = mapData(r).l1;
+            if (val) l1Set.add(val);
+        });
+        
         const sel = document.getElementById('l1Filter');
         const currentVal = sel.value;
         sel.innerHTML = '<option value="">L1 类目</option>';
-        Array.from(l1Set).sort().forEach(v => sel.innerHTML += `<option value="${v}">${v}</option>`);
+        Array.from(l1Set).sort().forEach(v => {
+            sel.innerHTML += `<option value="${v}">${v}</option>`;
+        });
         sel.value = currentVal;
     }
 
@@ -505,7 +536,10 @@
         const sel = document.getElementById('l3Filter');
         sel.innerHTML = '<option value="">L3 类目</option>';
         if (l1 && l2) {
-            const l3Set = new Set(products.filter(r => { const i = mapData(r); return i.l1 === l1 && i.l2 === l2; }).map(r => mapData(r).l3).filter(v => v));
+            const l3Set = new Set(products.filter(r => {
+                const i = mapData(r);
+                return i.l1 === l1 && i.l2 === l2;
+            }).map(r => mapData(r).l3).filter(v => v));
             [...l3Set].sort().forEach(v => sel.innerHTML += `<option value="${v}">${v}</option>`);
         }
     }
@@ -530,9 +564,13 @@
             const matchL3 = !l3 || i.l3 === l3;
             const matchPrice = (i.price_usd >= minP && i.price_usd <= maxP);
             const matchSite = !site || i.site === site;
-            const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.trim().toUpperCase();
+            
+            // ✅ 修复后：移除 CB 转换，直接执行去空格和不区分大小写的匹配
+const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.trim().toUpperCase();
+            
             const matchOfficial = !official || i.is_official_shop === official;
             const matchNew = !newSku || i.is_new_sku === newSku;
+
             return matchKw && matchL1 && matchL2 && matchL3 && matchPrice && matchSite && matchSeller && matchOfficial && matchNew;
         });
 
@@ -546,20 +584,11 @@
         render(filteredData, 1);
     }
 
-    function formatGrowthHtml(val, label) {
-        if (val === null || isNaN(val)) return "";
-        const num = val * 100;
-        let cls = "mom-none", icon = "";
-        if (num > 0) { cls = "mom-up"; icon = "↑ +"; }
-        else if (num < 0) { cls = "mom-down"; icon = "↓ "; }
-        else { icon = ""; }
-        return `<span class="mom-val ${cls}">${label}: ${icon}${num.toFixed(1)}%</span>`;
-    }
-
     function render(data, page) {
         currentPage = page;
         const start = (page - 1) * pageSize;
-        const pageData = data.slice(start, start + pageSize);
+        const end = start + pageSize;
+        const pageData = data.slice(start, end);
         const grid = document.getElementById('productGrid');
         
         if (pageData.length === 0) {
@@ -569,9 +598,6 @@
 
         grid.innerHTML = pageData.map(r => {
             const i = mapData(r);
-            const momHtml = formatGrowthHtml(i.MOM, "MOM");
-            const growthHtml = formatGrowthHtml(i.mom_growth, "MOM Growth");
-
             return `
                 <div class="card">
                     <div class="site-tag">${siteFlag[i.site] || i.site}</div>
@@ -587,7 +613,6 @@
                         </div>
                         <div class="meta-row">
                             <span class="pill pill-cat">${i.l2}</span>
-                            <div class="mom-container">${momHtml}${growthHtml}</div>
                         </div>
                         <div class="stats-row">
                             <div class="stat-box"><div class="stat-label">ADO</div><div class="stat-value sales-val">${i.daily_sales}</div></div>
@@ -622,19 +647,39 @@
         pag.innerHTML = html;
     }
 
-    function copyText(txt) { navigator.clipboard.writeText(txt).then(() => showToast("ID已复制")); }
-    function openModal(src) { document.getElementById('modalImg').src = src; document.getElementById('imageModal').style.display = 'flex'; }
+    function copyText(txt) {
+        navigator.clipboard.writeText(txt).then(() => showToast("ID已复制"));
+    }
+
+    function openModal(src) {
+        document.getElementById('modalImg').src = src;
+        document.getElementById('imageModal').style.display = 'flex';
+    }
+
     let timer;
-    function debouncedFilter() { clearTimeout(timer); timer = setTimeout(applyFilters, 300); }
+    function debouncedFilter() {
+        clearTimeout(timer);
+        timer = setTimeout(applyFilters, 300);
+    }
 
     function clearFilters() {
-        ["searchInput", "minPrice", "maxPrice"].forEach(id => document.getElementById(id).value = '');
-        ["l1Filter", "l2Filter", "l3Filter", "siteFilter", "sellerTypeFilter", "officialShopFilter", "isNewSkuFilter"].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('searchInput').value = '';
+        document.getElementById('l1Filter').value = '';
+        document.getElementById('l2Filter').value = '';
+        document.getElementById('l3Filter').value = '';
+        document.getElementById('minPrice').value = '';
+        document.getElementById('maxPrice').value = '';
+        document.getElementById('siteFilter').value = '';
+        document.getElementById('sellerTypeFilter').value = '';
+        document.getElementById('officialShopFilter').value = '';
+        document.getElementById('isNewSkuFilter').value = '';
         document.getElementById('sortOrder').value = 'dateDesc';
-        updateL2(); applyFilters();
+        updateL2(); 
+        applyFilters();
     }
 
     init();
 </script>
+
 </body>
 </html>
