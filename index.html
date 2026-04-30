@@ -231,8 +231,8 @@
         .pill { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; border: 1px solid transparent; }
         .pill-cat { background: var(--tag-bg); color: var(--primary-dark); border-color: #f5c5d2; }
 
-        /* MOM Style Rules */
-        .mom-val { font-size: 11px; font-weight: 700; }
+        .mom-container { display: flex; flex-direction: column; gap: 2px; }
+        .mom-val { font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 2px; }
         .mom-up { color: var(--success); }
         .mom-down { color: var(--danger); }
         .mom-none { color: var(--text-muted); }
@@ -249,7 +249,6 @@
 
         .extra-info { font-size: 11px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--border); }
         .extra-item { display: flex; gap: 4px; }
-        /* 新增样式：让 GGP Name 独占一行 */
         .ggp-row { grid-column: 1 / -1; display: flex; gap: 4px; padding-bottom: 4px; border-bottom: 1px dotted var(--border); margin-bottom: 2px; }
         .extra-label { font-weight: 600; color: #666; white-space: nowrap; }
 
@@ -389,8 +388,8 @@
 
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvjtVCX-0LPWEHXrZKoAqs0vOslq7uIe51pGmHdfKkYVkaKxU1uzBpDRtndxN13ZqpjeefXg8Ns4Rd/pub?output=csv';
-    const CACHE_KEY = 'shopee_fashion_data_v4';
-    const CACHE_TIME = 1000 * 60 * 30; // 30 mins
+    const CACHE_KEY = 'shopee_fashion_data_v5';
+    const CACHE_TIME = 1000 * 60 * 30;
     let products = [], filteredData = [], currentPage = 1;
     const pageSize = 40;
     const siteFlag = { BR:'🇧🇷', MX:'🇲🇽', MY:'🇲🇾', PH:'🇵🇭', SG:'🇸🇬', TH:'🇹🇭', TW:'🇹🇼', VN:'🇻🇳', ID:'🇮🇩' };
@@ -402,16 +401,17 @@
         setTimeout(() => t.classList.remove('show'), 2000);
     }
 
-    const clean = (s) => (s || "").toString().replace(/^[="]+|["]+$/g, '').trim();
-    const toNum = (s) => {
+    const clean = (s) => (s === undefined || s === null) ? "" : s.toString().replace(/^[="]+|["]+$/g, '').trim();
+    
+    const toNumRaw = (s) => {
         const val = clean(s).replace(/,/g, '');
-        return parseFloat(val) || 0;
+        if (val === "" || isNaN(val)) return null;
+        return parseFloat(val);
     };
 
-    // 标准化数据映射层 - 新增 MOM 字段映射
     const mapData = (row) => ({
         title: clean(row[0]),
-        price_usd: toNum(row[1]),
+        price_usd: toNumRaw(row[1]) || 0,
         price_local: clean(row[2]),
         imgUrl: clean(row[3]),
         link: clean(row[4]),
@@ -427,16 +427,13 @@
         seller_type: clean(row[14]),
         is_official_shop: clean(row[15]).toUpperCase(),
         is_new_sku: clean(row[16]).toUpperCase(),
-        daily_sales: toNum(row[17]),
-        daily_revenue: toNum(row[18]),
-        mom: row[19] !== undefined ? toNum(row[19]) : null,
-        mom_growth: row[20] !== undefined ? toNum(row[20]) : null // 新增：映射第21列 (U列) 数据为 mom_growth
+        daily_sales: toNumRaw(row[17]) || 0,
+        daily_revenue: toNumRaw(row[18]) || 0,
+        MOM: toNumRaw(row[19]), // 映射 T 列
+        mom_growth: toNumRaw(row[20]) // 映射 U 列
     });
 
     async function init() {
-        const KEYS_TO_CLEAR = ['shopee_fashion_data_v1', 'shopee_fashion_data_v2', 'shopee_fashion_data_v3'];
-        KEYS_TO_CLEAR.forEach(k => localStorage.removeItem(k));
-
         const cache = localStorage.getItem(CACHE_KEY);
         const cacheTime = localStorage.getItem(CACHE_KEY + '_time');
 
@@ -445,39 +442,22 @@
                 products = JSON.parse(cache);
                 processData();
                 return;
-            } catch (e) {
-                localStorage.removeItem(CACHE_KEY);
-            }
+            } catch (e) { localStorage.removeItem(CACHE_KEY); }
         }
 
         try {
-            console.log("正在从服务器获取最新数据...");
             const res = await fetch(SHEET_URL);
-            if (!res.ok) throw new Error("网络请求失败: " + res.status);
-            
             const text = await res.text();
-            if (!text || text.length < 100) throw new Error("获取到的数据为空");
-
             const rawRows = text.split(/\r?\n/).filter(line => line.trim().length > 0);
             const rows = rawRows.slice(1).map(line => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
             
             if (rows.length > 0) {
                 products = rows;
-                try {
-                    localStorage.setItem(CACHE_KEY, JSON.stringify(products));
-                    localStorage.setItem(CACHE_KEY + '_time', Date.now().toString());
-                } catch (quotaError) {
-                    console.warn("存储空间依然不足");
-                    localStorage.clear(); 
-                }
+                localStorage.setItem(CACHE_KEY, JSON.stringify(products));
+                localStorage.setItem(CACHE_KEY + '_time', Date.now().toString());
                 processData();
-            } else {
-                throw new Error("CSV 解析后无有效行");
             }
-        } catch (e) {
-            console.error("同步详细错误:", e);
-            showToast("加载失败: " + e.message);
-        }
+        } catch (e) { showToast("加载失败: " + e.message); }
     }
 
     function processData() {
@@ -491,11 +471,8 @@
                 }
             });
             products = Array.from(itemMap.values());
-            
             const now = new Date();
-            const displayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            document.getElementById('lastUpdateDisplay').textContent = `数据更新至: ${displayDate}`;
-            
+            document.getElementById('lastUpdateDisplay').textContent = `数据更新至: ${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             updateL1();
             applyFilters();
         }
@@ -503,16 +480,11 @@
 
     function updateL1() {
         const l1Set = new Set();
-        products.forEach(r => {
-            const val = mapData(r).l1;
-            if (val) l1Set.add(val);
-        });
+        products.forEach(r => { const val = mapData(r).l1; if (val) l1Set.add(val); });
         const sel = document.getElementById('l1Filter');
         const currentVal = sel.value;
         sel.innerHTML = '<option value="">L1 类目</option>';
-        Array.from(l1Set).sort().forEach(v => {
-            sel.innerHTML += `<option value="${v}">${v}</option>`;
-        });
+        Array.from(l1Set).sort().forEach(v => sel.innerHTML += `<option value="${v}">${v}</option>`);
         sel.value = currentVal;
     }
 
@@ -533,10 +505,7 @@
         const sel = document.getElementById('l3Filter');
         sel.innerHTML = '<option value="">L3 类目</option>';
         if (l1 && l2) {
-            const l3Set = new Set(products.filter(r => {
-                const i = mapData(r);
-                return i.l1 === l1 && i.l2 === l2;
-            }).map(r => mapData(r).l3).filter(v => v));
+            const l3Set = new Set(products.filter(r => { const i = mapData(r); return i.l1 === l1 && i.l2 === l2; }).map(r => mapData(r).l3).filter(v => v));
             [...l3Set].sort().forEach(v => sel.innerHTML += `<option value="${v}">${v}</option>`);
         }
     }
@@ -564,7 +533,6 @@
             const matchSeller = !seller || i.seller_type.trim().toUpperCase() === seller.trim().toUpperCase();
             const matchOfficial = !official || i.is_official_shop === official;
             const matchNew = !newSku || i.is_new_sku === newSku;
-
             return matchKw && matchL1 && matchL2 && matchL3 && matchPrice && matchSite && matchSeller && matchOfficial && matchNew;
         });
 
@@ -578,11 +546,20 @@
         render(filteredData, 1);
     }
 
+    function formatGrowthHtml(val, label) {
+        if (val === null || isNaN(val)) return "";
+        const num = val * 100;
+        let cls = "mom-none", icon = "";
+        if (num > 0) { cls = "mom-up"; icon = "↑ +"; }
+        else if (num < 0) { cls = "mom-down"; icon = "↓ "; }
+        else { icon = ""; }
+        return `<span class="mom-val ${cls}">${label}: ${icon}${num.toFixed(1)}%</span>`;
+    }
+
     function render(data, page) {
         currentPage = page;
         const start = (page - 1) * pageSize;
-        const end = start + pageSize;
-        const pageData = data.slice(start, end);
+        const pageData = data.slice(start, start + pageSize);
         const grid = document.getElementById('productGrid');
         
         if (pageData.length === 0) {
@@ -592,26 +569,8 @@
 
         grid.innerHTML = pageData.map(r => {
             const i = mapData(r);
-            
-            // MOM 展示逻辑处理
-            let momHtml = '';
-            if (i.mom !== null && !isNaN(i.mom)) {
-                const momVal = (i.mom * 100).toFixed(1);
-                let momClass = 'mom-none';
-                let arrow = '';
-                if (i.mom > 0) { momClass = 'mom-up'; arrow = '↑'; }
-                else if (i.mom < 0) { momClass = 'mom-down'; arrow = '↓'; }
-                
-                // 新增：MOM_growth 展示逻辑处理
-                let momGrowthHtml = '';
-                if (i.mom_growth !== null && !isNaN(i.mom_growth)) {
-                    const growthVal = (i.mom_growth * 100).toFixed(1);
-                    const sign = i.mom_growth > 0 ? '+' : '';
-                    momGrowthHtml = ` <span style="font-weight:400; opacity:0.8;">(MOM涨幅: ${sign}${growthVal}%)</span>`;
-                }
-
-                momHtml = `<span class="mom-val ${momClass}">MOM: ${arrow}${Math.abs(momVal)}%${momGrowthHtml}</span>`;
-            }
+            const momHtml = formatGrowthHtml(i.MOM, "MOM");
+            const growthHtml = formatGrowthHtml(i.mom_growth, "MOM Growth");
 
             return `
                 <div class="card">
@@ -628,7 +587,7 @@
                         </div>
                         <div class="meta-row">
                             <span class="pill pill-cat">${i.l2}</span>
-                            ${momHtml}
+                            <div class="mom-container">${momHtml}${growthHtml}</div>
                         </div>
                         <div class="stats-row">
                             <div class="stat-box"><div class="stat-label">ADO</div><div class="stat-value sales-val">${i.daily_sales}</div></div>
@@ -663,39 +622,19 @@
         pag.innerHTML = html;
     }
 
-    function copyText(txt) {
-        navigator.clipboard.writeText(txt).then(() => showToast("ID已复制"));
-    }
-
-    function openModal(src) {
-        document.getElementById('modalImg').src = src;
-        document.getElementById('imageModal').style.display = 'flex';
-    }
-
+    function copyText(txt) { navigator.clipboard.writeText(txt).then(() => showToast("ID已复制")); }
+    function openModal(src) { document.getElementById('modalImg').src = src; document.getElementById('imageModal').style.display = 'flex'; }
     let timer;
-    function debouncedFilter() {
-        clearTimeout(timer);
-        timer = setTimeout(applyFilters, 300);
-    }
+    function debouncedFilter() { clearTimeout(timer); timer = setTimeout(applyFilters, 300); }
 
     function clearFilters() {
-        document.getElementById('searchInput').value = '';
-        document.getElementById('l1Filter').value = '';
-        document.getElementById('l2Filter').value = '';
-        document.getElementById('l3Filter').value = '';
-        document.getElementById('minPrice').value = '';
-        document.getElementById('maxPrice').value = '';
-        document.getElementById('siteFilter').value = '';
-        document.getElementById('sellerTypeFilter').value = '';
-        document.getElementById('officialShopFilter').value = '';
-        document.getElementById('isNewSkuFilter').value = '';
+        ["searchInput", "minPrice", "maxPrice"].forEach(id => document.getElementById(id).value = '');
+        ["l1Filter", "l2Filter", "l3Filter", "siteFilter", "sellerTypeFilter", "officialShopFilter", "isNewSkuFilter"].forEach(id => document.getElementById(id).value = '');
         document.getElementById('sortOrder').value = 'dateDesc';
-        updateL2(); 
-        applyFilters();
+        updateL2(); applyFilters();
     }
 
     init();
 </script>
-
 </body>
 </html>
