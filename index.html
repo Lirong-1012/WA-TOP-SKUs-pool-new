@@ -319,7 +319,7 @@
             <select id="l1Filter" onchange="updateL2(); applyFilters()">
                 <option value="">L1 类目</option>
             </select>
-            <select id="l2Filter" onchange="updateL3(); applyFilters()">
+            <select id="l2Filter" onchange="updateL2(); applyFilters()">
                 <option value="">L2 类目</option>
             </select>
             <select id="l3Filter" onchange="applyFilters()">
@@ -429,7 +429,8 @@
         is_new_sku: clean(row[16]).toUpperCase(),
         daily_sales: toNum(row[17]),
         daily_revenue: toNum(row[18]),
-        mom: row[19] !== undefined ? toNum(row[19]) : null // 新增：映射第20列数据为 MOM
+        mom: row[19] !== undefined ? toNum(row[19]) : null,
+        mom_growth: row[20] !== undefined ? toNum(row[20]) : null // 新增：映射第21列 (U列) 数据为 mom_growth
     });
 
     async function init() {
@@ -600,7 +601,16 @@
                 let arrow = '';
                 if (i.mom > 0) { momClass = 'mom-up'; arrow = '↑'; }
                 else if (i.mom < 0) { momClass = 'mom-down'; arrow = '↓'; }
-                momHtml = `<span class="mom-val ${momClass}">MOM: ${arrow}${Math.abs(momVal)}%</span>`;
+                
+                // 新增：MOM_growth 展示逻辑处理
+                let momGrowthHtml = '';
+                if (i.mom_growth !== null && !isNaN(i.mom_growth)) {
+                    const growthVal = (i.mom_growth * 100).toFixed(1);
+                    const sign = i.mom_growth > 0 ? '+' : '';
+                    momGrowthHtml = ` <span style="font-weight:400; opacity:0.8;">(MOM涨幅: ${sign}${growthVal}%)</span>`;
+                }
+
+                momHtml = `<span class="mom-val ${momClass}">MOM: ${arrow}${Math.abs(momVal)}%${momGrowthHtml}</span>`;
             }
 
             return `
