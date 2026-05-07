@@ -427,7 +427,7 @@
         daily_sales: toNum(row[17]) || 0,
         daily_revenue: toNum(row[18]) || 0,
         mom: toNum(row[19]), 
-        mom_growth: toNum(row[20]) // 谷歌表格 U 列对应索引 20
+        mom_growth: toNum(row[20]) // 确保对应谷歌表格第 21 列 (U)
     });
 
     async function init() {
@@ -573,10 +573,10 @@
         grid.innerHTML = pageData.map(r => {
             const i = mapData(r);
             
-            // 格式化函数：处理百分比、箭头和颜色
+            // 格式化函数：满足新规则处理
             const formatGrowth = (val) => {
-                // 修改点：对 0, null, undefined, NaN, 空字符串 统一显示 "-"
-                if (val === null || val === undefined || isNaN(val) || val === "" || val === 0) {
+                // 如果是 0, null, undefined, NaN 或 空字符串，展示 -
+                if (val === 0 || val === null || val === undefined || isNaN(val) || val === "") {
                     return { text: "-", class: "" };
                 }
                 const arrow = val > 0 ? "↑" : (val < 0 ? "↓" : "");
