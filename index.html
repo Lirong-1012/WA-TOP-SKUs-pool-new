@@ -241,13 +241,12 @@
         .stat-value.sales-val { color: var(--success); }
         .stat-value.revenue-val { color: var(--info); }
 
-        /* 新增：用于增长率字段的展示颜色 */
+        /* 用于增长率字段的展示颜色 */
         .growth-up { color: var(--success) !important; }
         .growth-down { color: var(--danger) !important; }
 
         .extra-info { font-size: 11px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--border); }
         .extra-item { display: flex; gap: 4px; }
-        /* 新增样式：让 GGP Name 独占一行 */
         .ggp-row { grid-column: 1 / -1; display: flex; gap: 4px; padding-bottom: 4px; border-bottom: 1px dotted var(--border); margin-bottom: 2px; }
         .extra-label { font-weight: 600; color: #666; white-space: nowrap; }
 
@@ -427,7 +426,6 @@
         is_new_sku: clean(row[16]).toUpperCase(),
         daily_sales: toNum(row[17]) || 0,
         daily_revenue: toNum(row[18]) || 0,
-        // 新增字段读取：T列(index 19), U列(index 20)
         mom: toNum(row[19]), 
         mom_growth: toNum(row[20])
     });
@@ -560,7 +558,6 @@
         render(filteredData, 1);
     }
 
-    // 渲染函数：新增卡片展示逻辑
     function render(data, page) {
         currentPage = page;
         const start = (page - 1) * pageSize;
@@ -578,14 +575,14 @@
             
             // 格式化函数：处理百分比、箭头和颜色
             const formatGrowth = (val) => {
-                if (val === null || isNaN(val)) return { text: "-", class: "" };
+                if (val === null || isNaN(val)) return null;
                 const arrow = val > 0 ? "↑" : (val < 0 ? "↓" : "");
+                const prefix = val > 0 ? "+" : "";
                 const cls = val > 0 ? "growth-up" : (val < 0 ? "growth-down" : "");
-                const pct = (val * 100).toFixed(1) + "%";
+                const pct = prefix + (val * 100).toFixed(1) + "%";
                 return { text: `${arrow} ${pct}`, class: cls };
             };
 
-            const momRes = formatGrowth(i.mom);
             const momGrowthRes = formatGrowth(i.mom_growth);
 
             return `
@@ -608,17 +605,14 @@
                             <div class="stat-box"><div class="stat-label">ADO</div><div class="stat-value sales-val">${i.daily_sales}</div></div>
                             <div class="stat-box"><div class="stat-label">ADGMV</div><div class="stat-value revenue-val">$${Math.round(i.daily_revenue)}</div></div>
                         </div>
-                        <!-- 新增：MOM 和 mom_growth 展示区域 -->
+                        ${momGrowthRes ? `
                         <div class="stats-row">
                             <div class="stat-box">
-                                <div class="stat-label">MOM</div>
-                                <div class="stat-value ${momRes.class}">${momRes.text}</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-label">mom_growth</div>
+                                <div class="stat-label">mom涨幅</div>
                                 <div class="stat-value ${momGrowthRes.class}">${momGrowthRes.text}</div>
                             </div>
                         </div>
+                        ` : ''}
                         <div class="extra-info">
                             <div class="ggp-row"><span class="extra-label">GGP Name:</span>${i.ggp_name}</div>
                             <div class="extra-item"><span class="extra-label">team:</span>${i.team}</div>
